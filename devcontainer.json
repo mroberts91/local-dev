@@ -1,0 +1,77 @@
+{
+  "name": "Dev Environment — VS Code",
+
+  "dockerComposeFile": "docker-compose.yml",
+  "service": "dev",
+  "workspaceFolder": "/workspace",
+
+  // Required for iptables firewall
+  "capAdd": ["NET_ADMIN", "NET_RAW"],
+
+  // Initialize firewall on start (Anthropic reference pattern)
+  // "postStartCommand": "sudo /usr/local/bin/init-firewall.sh",
+
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "anthropic.claude-code",
+        // C# / .NET
+        "ms-dotnettools.csdevkit",
+        "ms-dotnettools.csharp",
+        // Go
+        "golang.go",
+        // Java / Maven
+        "vscjava.vscode-java-pack",
+        // Python
+        "ms-python.python",
+        "ms-python.vscode-pylance",
+        // Git
+        "eamodio.gitlens",
+        "mhutchie.git-graph",
+        // General
+        "esbenp.prettier-vscode",
+        "dbaeumer.vscode-eslint",
+        "redhat.vscode-yaml",
+        "ms-azuretools.vscode-docker"
+      ],
+      "settings": {
+        "editor.formatOnSave": true,
+        "editor.defaultFormatter": "esbenp.prettier-vscode",
+        "terminal.integrated.defaultProfile.linux": "zsh",
+        "terminal.integrated.profiles.linux": {
+          "zsh": { "path": "zsh" },
+          "bash": { "path": "bash", "icon": "terminal-bash" }
+        },
+        // C# / .NET
+        "dotnet.defaultSolution": "disable",
+        "omnisharp.enableEditorConfigSupport": true,
+        // Go
+        "go.toolsManagement.autoUpdate": true,
+        // Python
+        "python.defaultInterpreterPath": "/usr/bin/python3"
+      }
+    }
+  },
+
+  "remoteUser": "node",
+
+  "mounts": [
+    "source=dev-env-bashhistory,target=/commandhistory,type=volume",
+    "source=dev-env-claude-config,target=/home/node/.claude,type=volume",
+    "source=dev-env-code-server,target=/home/node/.local/share/code-server,type=volume",
+    "source=dev-env-go-cache,target=/home/node/go,type=volume",
+    "source=dev-env-nuget-cache,target=/home/node/.nuget,type=volume",
+    "source=dev-env-sdkman-cache,target=/home/node/.sdkman,type=volume"
+  ],
+
+  "containerEnv": {
+    "NODE_OPTIONS": "--max-old-space-size=4096",
+    "CLAUDE_CONFIG_DIR": "/home/node/.claude",
+    "POWERLEVEL9K_DISABLE_GITSTATUS": "true",
+    "DOTNET_ROOT": "/usr/share/dotnet",
+    "DOTNET_CLI_TELEMETRY_OPTOUT": "1",
+    "GOPATH": "/home/node/go",
+    "SDKMAN_DIR": "/home/node/.sdkman",
+    "JAVA_HOME": "/home/node/.sdkman/candidates/java/current"
+  }
+}

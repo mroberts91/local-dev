@@ -1,0 +1,117 @@
+# =============================================================================
+# docker-compose.yml — Dev environment with Claude Code + code-server
+#
+# Usage:
+#   docker compose up -d --build
+#   # code-server UI:  http://localhost:9090
+#   # Claude Code:     docker compose exec dev claude
+#
+# Or use with VS Code Dev Containers:
+#   "dockerComposeFile": "docker-compose.yml" in devcontainer.json
+# =============================================================================
+
+name: devenv
+services:
+  dev:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        TZ: America/New_York
+        CLAUDE_CODE_VERSION: latest
+        GO_VERSION: "1.23.4"
+        GIT_DELTA_VERSION: "0.18.2"
+
+    container_name: dev-env
+
+    # Required for iptables firewall (Anthropic reference pattern)
+    cap_add:
+      - NET_ADMIN
+      - NET_RAW
+
+    # Initialize firewall, then start code-server
+    # command: ["bash", "-c", "sudo /usr/local/bin/init-firewall.sh && code-server --bind-addr 0.0.0.0:9090 --auth none --disable-telemetry --disable-update-check /workspace"]
+    command: ["bash", "-c", "code-server --bind-addr 0.0.0.0:9090 --auth none --disable-telemetry --disable-update-check /workspace"]
+
+    ports:
+      # code-server (VS Code in browser)
+      - "9090:9090"
+      # Reserve a port range for apps you're developing
+      - "3000-3010:3000-3010"
+      - "5000-5010:5000-5010"
+
+    environment:
+      # ---------------------------------------------------------------
+      # Claude Code Authentication  (choose ONE method)
+      #
+      # METHOD 1 — Subscription OAuth token (Pro / Max / Team / Enterprise)
+      #   On your HOST machine, run:  claude setup-token
+      #   Complete the browser login, then copy the sk-ant-oat01-* token
+      #   into your .env file as CLAUDE_CODE_OAUTH_TOKEN.
+      #
+      # METHOD 2 — Interactive login (also subscription-based)
+      #   Leave both vars empty, start the container, then:
+      #     docker compose exec dev claude
+      #   It will print a URL → open in browser → paste code back.
+      #   Credentials persist in the claude-config volume.
+      #
+      # METHOD 3 — API key (pay-per-token, separate from subscription)
+      #   Only if you specifically want API billing.
+      #   NOTE: if ANTHROPIC_API_KEY is set it takes precedence over
+      #   subscription auth, even if you have a Pro/Max plan.
+      # ---------------------------------------------------------------
+      - CLAUDE_CODE_OAUTH_TOKEN=${CLAUDE_CODE_OAUTH_TOKEN:-}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - CLAUDE_CONFIG_DIR=/home/node/.claude
+      # Node
+      - NODE_OPTIONS=--max-old-space-size=4096
+      # .NET
+      - DOTNET_ROOT=/usr/share/dotnet
+      - DOTNET_CLI_TELEMETRY_OPTOUT=1
+      - DOTNET_NOLOGO=1
+      # Go
+      - GOPATH=/home/node/go
+      # Java / SDKMAN
+      - SDKMAN_DIR=/home/node/.sdkman
+      - JAVA_HOME=/home/node/.sdkman/candidates/java/current
+      # Shell
+      - SHELL=/bin/zsh
+      - POWERLEVEL9K_DISABLE_GITSTATUS=true
+      # Devcontainer marker
+      - DEVCONTAINER=true
+
+    volumes:
+      # --- Project workspace (bind mount) ---
+      # Mount the parent directory so you get the full repo context.
+      # Adjust this path to point at your actual project root.
+      - ../:/workspace
+
+      # --- Persistent named volumes (survive rebuilds) ---
+      - claude-config:/home/node/.claude
+      - bash-history:/commandhistory
+      - code-server-data:/home/node/.local/share/code-server
+      - go-cache:/home/node/go
+      - nuget-cache:/home/node/.nuget
+      - npm-cache:/usr/local/share/npm-global
+      - sdkman-cache:/home/node/.sdkman
+
+    # Sensible resource limits
+    deploy:
+      resources:
+        limits:
+          memory: 8g
+          cpus: "4"
+
+    stdin_open: true
+    tty: true
+
+    restart: unless-stopped
+
+volumes:
+  claude-config:
+  bash-history:
+  code-server-data:
+  go-cache:
+  nuget-cache:
+  npm-cache:
+  sdkman-cache:
